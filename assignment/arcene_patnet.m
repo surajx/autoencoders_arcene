@@ -3,77 +3,59 @@ arcene_train_labels = load('arcene_train_labels');
 arcene_valid_data   = load('arcene_valid_data');
 arcene_valid_labels = load('arcene_valid_labels');
 
+%Convert -1 to 0 for Classification problems.
 arcene_train_labels(arcene_train_labels==-1) = 0;
 arcene_valid_labels(arcene_valid_labels==-1) = 0;
 
 % FEATURE SELECTION
+% Remove feature with zero variance.
 arcene_train_sub = arcene_train_data(:,var(arcene_train_data)~=0);
 arcene_valid_sub = arcene_valid_data(:,var(arcene_train_data)~=0);
 
-arcene_train_sub_norm = arcene_train_sub;
-arcene_valid_sub_norm = arcene_valid_sub;
-
+% Remove feature with correlation with output lying in range [-0.1,0.1]
 mask_corr = [];
-for col = 1:size(arcene_train_sub_norm,2)
-    R = corrcoef(arcene_train_sub_norm(:,col), arcene_train_labels);
+for col = 1:size(arcene_train_sub,2)
+    R = corrcoef(arcene_train_sub(:,col), arcene_train_labels);
     if (R(1,2)>=-0.1) && (R(1,2)<=0.1)
         mask_corr = [mask_corr col];
     end
 end
-arcene_train_sub_norm(:,mask_corr) = [];
-arcene_valid_sub_norm(:,mask_corr) = [];
+arcene_train_sub(:,mask_corr) = [];
+arcene_valid_sub(:,mask_corr) = [];
 
-mask_SNR = [];
-for col = 1:size(arcene_train_sub_norm,2)
-    mean_diff = mean(arcene_train_sub_norm(:,col)) - mean(arcene_train_labels);
-    var_sum = std(arcene_train_sub_norm(:,col)) + std(arcene_train_labels);
-    SNR = mean_diff/var_sum;
-    mask_SNR = [mask_SNR; [SNR col]];
-end
-
-mask_SNR = sortrows(mask_SNR);
-mask_SNR(1:size(mask_SNR)-3000,:) = [];
-
-arcene_train_sub_norm = arcene_train_sub_norm(:,mask_SNR(:,2)');
-arcene_valid_sub_norm = arcene_valid_sub_norm(:,mask_SNR(:,2)');
-
+% Use RELIEFF Ranking to score features and select top 3000 ranked
+% features as final feature subset.
+[ranked,~] = relieff(arcene_train_sub, arcene_train_labels, 10);
+arcene_train_sub = arcene_train_sub(:,ranked(1:3000));
+arcene_valid_sub = arcene_valid_sub(:,ranked(1:3000));
 
 % NORMALIZE DATA
+% get min and max of each feature in the input data
+min_train = min(arcene_train_sub);
+max_train   = max(arcene_train_sub);
+min_max_diff = bsxfun(@minus, max_train, min_train);
 
-% get mean and sd of each feature in the input data
-mean_train = mean(arcene_train_sub_norm);
-sd_train   = std(arcene_train_sub_norm);
+arcene_train_sub_norm = bsxfun(@rdivide, bsxfun(@minus, arcene_train_sub, min_train), min_max_diff);
+arcene_valid_sub_norm = bsxfun(@rdivide, bsxfun(@minus, arcene_valid_sub, min_train), min_max_diff);
 
-arcene_train_sub_norm = bsxfun(@rdivide, bsxfun(@minus, arcene_train_sub_norm, mean_train), sd_train);
-arcene_valid_sub_norm = bsxfun(@rdivide, bsxfun(@minus, arcene_valid_sub_norm, mean_train), sd_train);
-
-
+% Setting seed of random number generator so that subsequent runs of the
+% neural network produce the same result.
 rng('default');
-arcene_total_data  = cat(1, arcene_train_sub_norm, arcene_valid_sub_norm);
-arcene_total_label = cat(1, arcene_train_labels, arcene_valid_labels);
-opt_hidden_neuron = optimal_hneurons(arcene_total_data, arcene_total_label, 100);
+min_err = Inf;
 
-
-max_trials = 100;
-err = zeros(max_trials,1);
-for i = 1:max_trials
-	nnet = patternnet(opt_hidden_neuron);
-    % nnet = patternnet(24);
-	nnet.divideParam.trainRatio = 0.70;
-	nnet.divideParam.valRatio = 0.15;
-	nnet.divideParam.testRatio = 0.15;
-    nnet.trainParam.max_fail = 10;
-    nnet.performParam.regularization = 0.01;
-	nnet.trainParam.showWindow = false;
-
-	[nnet, tr] = train(nnet, arcene_train_sub_norm', arcene_train_labels');
-
-	predictions = nnet(arcene_valid_sub_norm');
-
-	% plotconfusion(arcene_valid_labels', predictions);
-	[~,cm,~,~] = confusion(arcene_valid_labels', predictions);
-	err(i) = 0.5*(cm(1,2)/(cm(1,1)+cm(1,2)) + cm(2,1)/(cm(2,1)+cm(2,2)));
-    % disp(err(i));
+% Optimize the number of neurons as a hyper parameter and simultaneously,
+% generalize the neural network to training data with 10-fold cross
+% validation.
+for i = 1:100
+    opt_hidden_neuron = i;
+    nnet = generalized_nnet(arcene_train_sub_norm, arcene_train_labels, opt_hidden_neuron);
+    predictions = nnet(arcene_valid_sub_norm');
+    % plotconfusion(arcene_valid_labels', predictions);
+    [~,cm,~,~] = confusion(arcene_valid_labels', predictions);
+    err = 0.5*(cm(1,2)/(cm(1,1)+cm(1,2)) + cm(2,1)/(cm(2,1)+cm(2,2)));
+    if err < min_err
+        min_err = err;
+        min_err_net = nnet;
+    end
 end
-avg_err = sum(err)/max_trials;
-disp(avg_err);
+disp(min_err_net);
