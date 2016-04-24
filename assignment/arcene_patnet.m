@@ -23,11 +23,11 @@ end
 arcene_train_sub(:,mask_corr) = [];
 arcene_valid_sub(:,mask_corr) = [];
 
-% Use RELIEFF Ranking to score features and select top 3000 ranked
+% Use RELIEFF Ranking to score features and select top 1400 ranked
 % features as final feature subset.
 [ranked,~] = relieff(arcene_train_sub, arcene_train_labels, 10);
-arcene_train_sub = arcene_train_sub(:,ranked(1:3000));
-arcene_valid_sub = arcene_valid_sub(:,ranked(1:3000));
+arcene_train_sub = arcene_train_sub(:,ranked(1:1400));
+arcene_valid_sub = arcene_valid_sub(:,ranked(1:1400));
 
 % NORMALIZE DATA
 % get min and max of each feature in the input data
@@ -42,21 +42,23 @@ arcene_valid_sub_norm = bsxfun(@rdivide, bsxfun(@minus, arcene_valid_sub, min_tr
 % neural network produce the same result.
 rng('default');
 min_err = Inf;
+opt_neuron = 1;
 
 % Optimize the number of neurons as a hyper parameter and simultaneously,
 % generalize the neural network to training data with 10-fold cross
 % validation.
-for i = 1:100
-    opt_hidden_neuron = i;
-    nnet = generalized_nnet(arcene_train_sub_norm, arcene_train_labels, opt_hidden_neuron);
+for H = 1:100
+    nnet = generalized_nnet(arcene_train_sub_norm, arcene_train_labels, H);
     predictions = nnet(arcene_valid_sub_norm');
     % plotconfusion(arcene_valid_labels', predictions);
     [~,cm,~,~] = confusion(arcene_valid_labels', predictions);
     err = 0.5*(cm(1,2)/(cm(1,1)+cm(1,2)) + cm(2,1)/(cm(2,1)+cm(2,2)));
     if err < min_err
         min_err = err;
+        opt_neuron = H;
         min_err_net = nnet;
     end
 end
+disp(opt_neuron);
 disp(min_err);
 disp(min_err_net);
