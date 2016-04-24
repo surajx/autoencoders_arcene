@@ -58,4 +58,5 @@ for i = 1:100
         min_err_net = nnet;
     end
 end
+disp(min_err);
 disp(min_err_net);
