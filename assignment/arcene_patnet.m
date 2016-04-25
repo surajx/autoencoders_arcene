@@ -50,7 +50,7 @@ opt_neuron = 1;
 for H = 1:100
     nnet = generalized_nnet(arcene_train_sub_norm, arcene_train_labels, H);
     predictions = nnet(arcene_valid_sub_norm');
-    % plotconfusion(arcene_valid_labels', predictions);
+    plotconfusion(arcene_valid_labels', predictions);
     [~,cm,~,~] = confusion(arcene_valid_labels', predictions);
     err = 0.5*(cm(1,2)/(cm(1,1)+cm(1,2)) + cm(2,1)/(cm(2,1)+cm(2,2)));
     if err < min_err

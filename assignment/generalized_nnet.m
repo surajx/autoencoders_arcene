@@ -9,9 +9,9 @@ function min_err_net = generalized_nnet(X, T, H)
     % Training Fn: Scaled Conjugate Gradient Back Propagation
     % Performance Fn: Cross-Entropy
     % Cross-validation Max Fail: The training process is cross-validated 
-    % to stop early if the validation set error rises for 10 consecutive 
+    % to stop early if the validation error rises for 10 consecutive 
     % iterations.
-    %
+    % Regularization: To prevent over-fitting
     net = patternnet(H);
 	net.divideParam.trainRatio = 0.75;
 	net.divideParam.valRatio = 0.15;
