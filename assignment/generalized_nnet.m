@@ -20,6 +20,7 @@ function min_err_net = generalized_nnet(X, T, H)
     net.performParam.regularization = 0.01;
 	net.trainParam.showWindow = false;
     min_err = Inf;
+    % Re-training and cross-validation.
     CVO = cvpartition(T(:,1), 'k', 10);
     for i = 1:CVO.NumTestSets
         trIdx = CVO.training(i);

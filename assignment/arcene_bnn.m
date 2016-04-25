@@ -52,3 +52,4 @@ predictions = nnet(arcene_valid_sub_norm');
 plotconfusion(arcene_valid_labels', predictions);
 [~,cm,~,~] = confusion(arcene_valid_labels', predictions);
 disp(0.5*(cm(1,2)/(cm(1,1)+cm(1,2)) + cm(2,1)/(cm(2,1)+cm(2,2))));
+disp(cm);
