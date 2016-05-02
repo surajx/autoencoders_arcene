@@ -10,3 +10,5 @@ supervised logistic regression by a softmax classifier. We then compare the
 balanced error rate (BER) performance measure of the deep network with that of
 a feedforward neural network. The report also highlights why a Bayesian neural
 network (BNN) was considered but not selected for the study.
+
+Full report: [paper.pdf](https://github.com/surajx/autoencoders_arcene/raw/master/autoencoders_arcene/paper.pdf)
